@@ -1,0 +1,6 @@
+{
+  "name": "WildSeek AR",
+  "description": "Live spatial hide-and-seek safari using your phone camera, 360° gyroscope orientation, Gemini Vision room scanning, and procedural 3D wildlife.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
