@@ -2,7 +2,15 @@
 
 A real-time multiplayer WebAR game where players scan a physical room, find **15 hidden 3D animals** on the floor, grab them using real-time **hand tracking**, and drop them into a **single shared rescue basket**.
 
-🎥 **Gameplay Demo Video:** [Watch on iCloud](https://www.icloud.com/photos/#/icloudlinks/036gTOzETdT2J835nwObXrAfg/)
+## Gameplay Demo Video
+
+<div align="center">
+  <video src="public/assets/aistudio/IMG_3966_4d12d8ca.MOV" width="320" controls autoplay loop muted playsinline>
+    <a href="public/assets/aistudio/IMG_3966_4d12d8ca.MOV">Watch Gameplay Demo Video (IMG_3966_4d12d8ca.MOV)</a>
+  </video>
+  <br />
+  <sub>▶️ <a href="public/assets/aistudio/IMG_3966_4d12d8ca.MOV">Click here to open / play the gameplay video directly</a></sub>
+</div>
 
 ---
 
