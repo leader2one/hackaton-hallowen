@@ -109,27 +109,34 @@ const PLAYER_COLORS = ['#f59e0b', '#10b981', '#38bdf8', '#f43f5e', '#a855f7', '#
 const rooms = new Map<string, ServerRoomState>();
 const sseClientsByRoom = new Map<string, Set<Response>>();
 
+function isMuratHostName(name?: string | null): boolean {
+  return String(name || '').trim().toLowerCase() === 'murat';
+}
+
 function ensureRoomHost(room: ServerRoomState) {
-  if (room.hostPlayerId && room.players.has(room.hostPlayerId)) {
-    const hostPlayer = room.players.get(room.hostPlayerId)!;
-    room.hostPlayerName = hostPlayer.name;
+  // Rule: The player named "Murat" (case-insensitive) is ALWAYS the Room Host
+  let muratPlayer: ServerRoomPlayer | undefined;
+  for (const p of room.players.values()) {
+    if (isMuratHostName(p.name)) {
+      muratPlayer = p;
+      break;
+    }
+  }
+
+  if (muratPlayer) {
+    room.hostPlayerId = muratPlayer.id;
+    room.hostPlayerName = muratPlayer.name;
     for (const p of room.players.values()) {
-      p.isHost = p.id === room.hostPlayerId;
+      p.isHost = p.id === muratPlayer.id;
     }
     return;
   }
 
-  // Assign the first connected player as the Room Host
-  const firstPlayer = room.players.values().next().value as ServerRoomPlayer | undefined;
-  if (firstPlayer) {
-    room.hostPlayerId = firstPlayer.id;
-    room.hostPlayerName = firstPlayer.name;
-    for (const p of room.players.values()) {
-      p.isHost = p.id === firstPlayer.id;
-    }
-  } else {
-    room.hostPlayerId = null;
-    room.hostPlayerName = null;
+  // If Murat is not currently connected, keep host reserved for Murat
+  room.hostPlayerId = null;
+  room.hostPlayerName = 'Murat';
+  for (const p of room.players.values()) {
+    p.isHost = false;
   }
 }
 
@@ -324,7 +331,7 @@ app.post('/api/room/sync', (req, res) => {
     lastSeenMs: Date.now(),
   });
 
-  if (claimHost) {
+  if (isMuratHostName(playerName)) {
     room.hostPlayerId = playerId;
     room.hostPlayerName = playerName;
   }
@@ -336,8 +343,15 @@ app.post('/api/room/sync', (req, res) => {
 
   let maxScan = 0;
   for (const p of room.players.values()) {
-    if (p.scanCoveragePercent > maxScan) {
+    if (isMuratHostName(p.name) && p.scanCoveragePercent > maxScan) {
       maxScan = p.scanCoveragePercent;
+    }
+  }
+  if (maxScan === 0) {
+    for (const p of room.players.values()) {
+      if (p.scanCoveragePercent > maxScan) {
+        maxScan = p.scanCoveragePercent;
+      }
     }
   }
   room.combinedScanPercent = Math.min(100, Math.round(maxScan));
@@ -348,14 +362,20 @@ app.post('/api/room/sync', (req, res) => {
 app.post('/api/room/place-basket', (req, res) => {
   const {
     roomCode = 'MAIN',
-    playerName = 'Player',
+    playerName = 'Murat',
     yawDeg = 42,
-    distanceMeters = 1.65,
-    worldPos = [1.1, -0.88, -1.2],
-    cornerLabel = 'Floor Corner',
+    distanceMeters = 1.45,
+    worldPos = [1.0, -0.88, -1.1],
+    cornerLabel = 'Shared Floor Basket',
   } = req.body || {};
 
   const room = getOrCreateRoom(roomCode);
+  // Only Host ("Murat") places the single shared basket for everyone in the room
+  if (!isMuratHostName(playerName)) {
+    res.json(serializeRoom(room));
+    return;
+  }
+
   room.cornerBasket = {
     yawDeg: Number(yawDeg),
     distanceMeters: Number(distanceMeters),
@@ -365,7 +385,7 @@ app.post('/api/room/place-basket', (req, res) => {
   };
   room.lastEventToast = {
     id: `basket_${Date.now()}`,
-    message: `${playerName} placed the Rescue Basket at ${cornerLabel}!`,
+    message: `Host ${playerName} placed the shared Rescue Basket (${cornerLabel})!`,
     timestampMs: Date.now(),
   };
 
@@ -377,17 +397,17 @@ app.post('/api/room/start-round', (req, res) => {
   const {
     roomCode = 'MAIN',
     playerId,
-    playerName = 'Host',
+    playerName = 'Murat',
     placements = [],
     cornerBasket,
   } = req.body || {};
 
   const room = getOrCreateRoom(roomCode);
-  if (playerId) {
+  if (playerId && isMuratHostName(playerName)) {
     room.hostPlayerId = String(playerId);
     room.hostPlayerName = String(playerName);
-    ensureRoomHost(room);
   }
+  ensureRoomHost(room);
 
   if (Array.isArray(placements) && placements.length > 0) {
     room.placements = placements.map((p: ServerAnimalPlacement) => ({

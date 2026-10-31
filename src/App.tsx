@@ -436,37 +436,20 @@ export default function App() {
     setPhase('scan');
   };
 
-  // Allow any player to claim Host role if they want to scan from their phone
-  const handleClaimHostScanner = async () => {
-    spatialAudio.playScanSweep();
-    autoTriggeredAt90Ref.current = false;
-    try {
-      const res = await fetch('/api/room/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomCode: SHARED_SESSION_CODE,
-          playerId,
-          playerName: effectivePlayerName,
-          claimHost: true,
-        }),
-      });
-      if (res.ok) {
-        const state = await res.json();
-        applyIncomingServerRoomState(state);
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  // Place the 3D Sanctuary Rescue Basket on the floor in the corner the player is pointing at
-  const handlePlaceBasketInCurrentCorner = async () => {
-    const placed = viewportRef.current?.placeCornerBasketAtCurrentView();
+  // Place the single shared 3D Rescue Basket on the floor (Host Murat only)
+  const handlePlaceBasketInCurrentCorner = async (
+    presetYawDeg?: number,
+    presetLabel?: string
+  ) => {
+    if (effectivePlayerName.trim().toLowerCase() !== 'murat') return;
+    const placed = viewportRef.current?.placeCornerBasketAtCurrentView(
+      presetYawDeg,
+      presetLabel
+    );
     if (!placed) return;
     spatialAudio.playScanSweep();
     setCornerBasket(placed);
-    setSpottedToast(`Rescue Basket placed in ${placed.cornerLabel}!`);
+    setSpottedToast(`Shared Rescue Basket set at ${placed.cornerLabel}!`);
 
     try {
       const res = await fetch('/api/room/place-basket', {
@@ -704,9 +687,9 @@ export default function App() {
   ]);
 
   const activePlayers = roomState?.players || [];
-  const isCurrentPlayerHost =
-    !roomState?.hostPlayerId || roomState.hostPlayerId === playerId;
-  const hostDisplayName = roomState?.hostPlayerName || effectivePlayerName;
+  // Rule: "Murat" (case-insensitive) is ALWAYS the Room Host; all others are normal players
+  const isCurrentPlayerHost = effectivePlayerName.trim().toLowerCase() === 'murat';
+  const hostDisplayName = 'Murat';
 
   const effectiveGreenPercent = isCurrentPlayerHost
     ? Math.max(scanProgress.accuratePercent, roomState?.combinedScanPercent || 0)
@@ -1006,19 +989,39 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bottom Controls: Host Scans & Places Basket; Non-Host Players Wait Automatically */}
+          {/* Bottom Controls: Host (Murat) Scans & Easily Places Shared Basket; Normal Players Wait */}
           <div className="w-full max-w-md mx-auto pointer-events-auto flex flex-col gap-2">
             {isCurrentPlayerHost ? (
               <>
-                <button
-                  onClick={handlePlaceBasketInCurrentCorner}
-                  className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-stone-950/90 border border-emerald-500/60 text-emerald-300 hover:bg-stone-900 text-xs font-semibold flex items-center justify-center gap-2 shadow-lg cursor-pointer"
-                >
-                  <MapPin className="w-4 h-4 text-emerald-400" />
-                  <span>
-                    Point at a Floor Corner &amp; Tap to Set Basket ({cornerBasket.cornerLabel})
-                  </span>
-                </button>
+                <div className="bg-stone-950/92 border border-emerald-500/50 rounded-xl p-2 flex flex-col gap-1.5 shadow-lg">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-emerald-300 px-1">
+                    <span className="flex items-center gap-1 font-semibold">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                      Shared Basket: {cornerBasket.cornerLabel}
+                    </span>
+                    <span className="text-stone-400">1-Tap Easy Place</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={() => handlePlaceBasketInCurrentCorner(undefined, 'In Front')}
+                      className="min-h-[36px] px-2 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 hover:bg-emerald-500/30 text-[11px] font-semibold cursor-pointer"
+                    >
+                      Drop Here
+                    </button>
+                    <button
+                      onClick={() => handlePlaceBasketInCurrentCorner(315, 'Left Corner')}
+                      className="min-h-[36px] px-2 py-1.5 rounded-lg bg-stone-900 border border-stone-700 text-stone-200 hover:bg-stone-800 text-[11px] font-medium cursor-pointer"
+                    >
+                      Left Corner
+                    </button>
+                    <button
+                      onClick={() => handlePlaceBasketInCurrentCorner(45, 'Right Corner')}
+                      className="min-h-[36px] px-2 py-1.5 rounded-lg bg-stone-900 border border-stone-700 text-stone-200 hover:bg-stone-800 text-[11px] font-medium cursor-pointer"
+                    >
+                      Right Corner
+                    </button>
+                  </div>
+                </div>
 
                 <button
                   onClick={handleCompleteScanAndHide}
@@ -1040,18 +1043,11 @@ export default function App() {
             ) : (
               <div className="bg-stone-950/95 border border-stone-800 rounded-2xl p-4 text-center shadow-xl">
                 <div className="text-xs font-bold text-emerald-400">
-                  Host ({hostDisplayName}) is scanning the room ({effectiveGreenPercent}% / 90%)
+                  Host ({hostDisplayName}) is scanning &amp; setting the shared basket ({effectiveGreenPercent}% / 90%)
                 </div>
                 <p className="text-[11px] text-stone-300 mt-1">
-                  You don&apos;t need to scan! Once {hostDisplayName} reaches 90%, the 2:00 timer
-                  and all 15 animals will start on your screen automatically.
+                  Shared Basket: <span className="text-amber-300 font-semibold">{cornerBasket.cornerLabel}</span>. Once {hostDisplayName} reaches 90%, the 2:00 timer and all 15 animals will start automatically!
                 </p>
-                <button
-                  onClick={handleClaimHostScanner}
-                  className="mt-3 w-full min-h-[40px] px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-300 text-xs font-semibold cursor-pointer"
-                >
-                  Scan From My Phone Instead (Become Host)
-                </button>
               </div>
             )}
           </div>
@@ -1327,13 +1323,15 @@ export default function App() {
                   <span className="truncate">Walk / Step Closer (+0.6m)</span>
                 </button>
 
-                <button
-                  onClick={handlePlaceBasketInCurrentCorner}
-                  className="min-h-[44px] px-3 py-2.5 rounded-xl bg-stone-950/90 border border-stone-800 text-emerald-400 active:bg-stone-800 text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <MapPin className="w-4 h-4 shrink-0" />
-                  <span>Set Basket Corner</span>
-                </button>
+                {isCurrentPlayerHost && (
+                  <button
+                    onClick={() => handlePlaceBasketInCurrentCorner(undefined, 'Shared Floor')}
+                    className="min-h-[44px] px-3 py-2.5 rounded-xl bg-stone-950/90 border border-emerald-500/60 text-emerald-400 active:bg-stone-800 text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    <span>Move Shared Basket Here</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => setShowQrModal(true)}

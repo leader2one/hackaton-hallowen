@@ -112,7 +112,10 @@ export interface ArViewportHandle {
   resetScanProgress: () => void;
   stepForwardManual: (meters?: number) => void;
   resetWalkPosition: () => void;
-  placeCornerBasketAtCurrentView: () => CornerBasketPlacement;
+  placeCornerBasketAtCurrentView: (
+    presetYawDeg?: number,
+    presetLabel?: string
+  ) => CornerBasketPlacement;
 }
 
 interface ArViewportProps {
@@ -470,29 +473,33 @@ export const ArViewport = forwardRef<ArViewportHandle, ArViewportProps>(
         st.targetPosX = 0;
         st.targetPosZ = 0;
       },
-      placeCornerBasketAtCurrentView: () => {
+      placeCornerBasketAtCurrentView: (presetYawDeg?: number, presetLabel?: string) => {
         const st = motionStateRef.current;
-        const headingDeg = st.currentHeadingDeg;
+        const headingDeg =
+          typeof presetYawDeg === 'number'
+            ? ((presetYawDeg % 360) + 360) % 360
+            : st.currentHeadingDeg;
         const yawRad = THREE.MathUtils.degToRad(headingDeg);
-        const dist = 1.68;
+        const dist = 1.4;
         const rawBx = st.posX + Math.sin(yawRad) * dist;
         const rawBz = st.posZ - Math.cos(yawRad) * dist;
         const [clampedBx, clampedBz] = clampToRoomFloorXZ(rawBx, rawBz);
         const bx = Number(clampedBx.toFixed(2));
         const bz = Number(clampedBz.toFixed(2));
         const compassDir =
-          headingDeg >= 315 || headingDeg < 45
-            ? 'Front Corner'
+          presetLabel ||
+          (headingDeg >= 315 || headingDeg < 45
+            ? 'Front Floor'
             : headingDeg >= 45 && headingDeg < 135
             ? 'Right Corner'
             : headingDeg >= 135 && headingDeg < 225
             ? 'Back Corner'
-            : 'Left Corner';
+            : 'Left Corner');
         const placement: CornerBasketPlacement = {
           yawDeg: Math.round(headingDeg),
           distanceMeters: dist,
           worldPos: [bx, FLOOR_Y, bz],
-          cornerLabel: `${compassDir} (${Math.round(headingDeg)}° · ${dist.toFixed(1)}m)`,
+          cornerLabel: `${compassDir} (${dist.toFixed(1)}m)`,
         };
         cornerBasketRef.current = placement;
         return placement;
