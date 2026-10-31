@@ -4,13 +4,13 @@ A real-time multiplayer WebAR game where players scan a physical room, find **15
 
 ## Gameplay Demo Video
 
+
 <div align="center">
-  <video src="public/assets/aistudio/IMG_3966_4d12d8ca.MOV" width="320" controls autoplay loop muted playsinline>
-    <a href="public/assets/aistudio/IMG_3966_4d12d8ca.MOV">Watch Gameplay Demo Video (IMG_3966_4d12d8ca.MOV)</a>
-  </video>
-  <br />
-  <sub>▶️ <a href="public/assets/aistudio/IMG_3966_4d12d8ca.MOV">Click here to open / play the gameplay video directly</a></sub>
+  <a href="https://drive.google.com/file/d/1EFsEWCsmhGOX_YbW3EoDi3UPyzGHeLLC/view">
+    ▶️ Watch Gameplay Demo Video
+  </a>
 </div>
+
 
 ---
 
